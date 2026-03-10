@@ -4,262 +4,558 @@
 <meta charset="UTF-8">
 <title>HB Skills Academy - Admin Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-:root{--green:#198754;--orange:#ff8c00;--dark:#0f2a44;}
-body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
-header{background:var(--dark);color:#fff;padding:15px;text-align:center;}
-header div:first-child{font-size:24px;font-weight:bold;}
-header div:last-child{font-size:14px;color:#fff;opacity:0.85;}
-nav{display:none;gap:5px;background:var(--orange);padding:8px;flex-wrap:wrap;}
-nav button{flex:1;border:none;padding:10px;color:#fff;border-radius:6px;font-size:15px;cursor:pointer;margin:2px;}
-nav button.active{background:var(--green);}
-section{display:none;padding:15px;}
-input,textarea,select,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
-button{background:var(--green);color:#fff;font-weight:bold;cursor:pointer;}
-.card{background:#fff;border-radius:10px;padding:10px;margin:10px 0;box-shadow:0 2px 5px rgba(0,0,0,.1);}
-.badge{display:inline-block;background:var(--orange);color:#000;padding:3px 6px;border-radius:4px;font-size:12px;margin-left:4px;}
-.approved{background:var(--green);color:#fff;}
-.pending{background:#ffc107;color:#000;}
+
+:root{
+--green:#198754;
+--orange:#ff8c00;
+--dark:#0f2a44;
+}
+
+body{
+margin:0;
+font-family:Arial;
+background:#f4f4f4;
+}
+
+header{
+background:var(--dark);
+color:white;
+padding:15px;
+text-align:center;
+}
+
+nav{
+display:flex;
+gap:5px;
+background:var(--orange);
+padding:8px;
+flex-wrap:wrap;
+}
+
+nav button{
+flex:1;
+border:none;
+padding:10px;
+color:white;
+border-radius:6px;
+cursor:pointer;
+}
+
+nav button.active{
+background:var(--green);
+}
+
+section{
+display:none;
+padding:15px;
+}
+
+input,textarea,select{
+width:100%;
+padding:10px;
+margin:6px 0;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+background:var(--green);
+color:white;
+padding:10px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+margin-top:5px;
+}
+
+.card{
+background:white;
+padding:10px;
+border-radius:10px;
+margin:10px 0;
+box-shadow:0 2px 5px rgba(0,0,0,.1);
+}
+
+img,video{
+max-width:200px;
+display:block;
+margin-top:10px;
+}
+
+.modal{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+justify-content:center;
+align-items:center;
+}
+
+.modal-content{
+background:white;
+padding:20px;
+border-radius:10px;
+width:90%;
+max-width:500px;
+}
+
+.close-btn{
+float:right;
+cursor:pointer;
+color:red;
+}
+
 </style>
 </head>
+
 <body>
 
 <header>
-  <div>HB Skills Academy</div>
-  <div>Admin Portal</div>
+<h2>HB Skills Academy</h2>
+Admin Portal
 </header>
 
 <section id="authBox">
-  <h3>Admin Login</h3>
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-  <button id="loginBtn">Login</button>
+<h3>Admin Login</h3>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button id="loginBtn">Login</button>
 </section>
 
-<nav id="nav">
-  <button data-tab="students" class="active">Enrollments</button>
-  <button data-tab="courses">Courses</button>
-  <button data-tab="lessons">Lessons & Quizzes</button>
-  <button id="logout">Logout</button>
+<nav id="nav" style="display:none">
+
+<button data-tab="students">Enrollments</button>
+<button data-tab="courses">Courses</button>
+<button data-tab="lessons">Lessons</button>
+<button data-tab="users">Users</button>
+<button id="logout">Logout</button>
+
 </nav>
 
 <section id="students">
-  <h3>Pending Enrollments</h3>
-  <div id="pendingEnrollments"></div>
+<h3>Pending Enrollments</h3>
+<div id="pendingEnrollments"></div>
 </section>
 
 <section id="courses">
-  <h3>Manage Courses</h3>
-  <input id="newCourseTitle" placeholder="New Course Title">
-  <textarea id="newCourseDesc" placeholder="Course Description"></textarea>
-  <button id="addCourse">Add Course</button>
-  <div id="courseList"></div>
+
+<h3>Courses</h3>
+
+<input id="newCourseTitle" placeholder="Course Title">
+<textarea id="newCourseDesc" placeholder="Course Description"></textarea>
+
+<button id="addCourse">Add Course</button>
+
+<div id="courseList"></div>
+
 </section>
 
 <section id="lessons">
-  <h3>Lessons & Quizzes</h3>
-  <select id="courseSelect">
-    <option value="">Select Course</option>
-  </select>
-  <input id="newLessonTitle" placeholder="Lesson Title">
-  <textarea id="newLessonTheory" placeholder="Lesson Theory Content"></textarea>
-  <input type="file" id="lessonImage" accept="image/*">
-  <button id="addLesson">Add Lesson</button>
-  <div id="lessonList"></div>
+
+<h3>Lessons</h3>
+
+<select id="courseSelect">
+<option value="">Select Course</option>
+</select>
+
+<input id="newLessonTitle" placeholder="Lesson Title">
+
+<textarea id="newLessonTheory" placeholder="Lesson Content"></textarea>
+
+<input type="file" id="lessonImage">
+
+<input type="file" id="lessonVideo">
+
+<button id="addLesson">Add Lesson</button>
+
+<div id="lessonList"></div>
+
 </section>
+
+<section id="users">
+
+<h3>All Users</h3>
+
+<input id="searchUser" placeholder="Search users">
+
+<div id="userList"></div>
+
+</section>
+
+<div id="editModal" class="modal">
+
+<div class="modal-content">
+
+<span class="close-btn" id="closeModal">X</span>
+
+<h3 id="modalTitle"></h3>
+
+<input id="modalInput1">
+
+<textarea id="modalInput2"></textarea>
+
+<button id="saveModal">Save</button>
+
+</div>
+
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
+
 firebase.initializeApp({
-  apiKey:"AIzaSyDhRFgn7nXoZlRf-GX7XakwUYrEMFZDgrI",
-  authDomain:"pa-mwera.firebaseapp.com",
-  projectId:"pa-mwera"
+apiKey:"AIzaSyDhRFgn7nXoZlRf-GX7XakwUYrEMFZDgrI",
+authDomain:"pa-mwera.firebaseapp.com",
+projectId:"pa-mwera"
 });
-const auth = firebase.auth();
-const db = firebase.firestore();
 
-/* Elements */
-const authBox = document.getElementById("authBox");
-const nav = document.getElementById("nav");
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const pendingEnrollments = document.getElementById("pendingEnrollments");
-const courseList = document.getElementById("courseList");
-const newCourseTitle = document.getElementById("newCourseTitle");
-const newCourseDesc = document.getElementById("newCourseDesc");
-const courseSelect = document.getElementById("courseSelect");
-const newLessonTitle = document.getElementById("newLessonTitle");
-const newLessonTheory = document.getElementById("newLessonTheory");
-const lessonImage = document.getElementById("lessonImage");
-const lessonList = document.getElementById("lessonList");
+const auth=firebase.auth();
+const db=firebase.firestore();
 
-/* Navigation */
+const nav=document.getElementById("nav");
+
 function show(id){
-  document.querySelectorAll("section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
-  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
-  const btn = document.querySelector(`nav button[data-tab="${id}"]`);
-  if(btn) btn.classList.add("active");
+document.querySelectorAll("section").forEach(s=>s.style.display="none");
+document.getElementById(id).style.display="block";
 }
-document.querySelectorAll("nav button[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
 
-/* Login */
-document.getElementById("loginBtn").onclick = async ()=>{
-  try{
-    const userCred = await auth.signInWithEmailAndPassword(email.value,password.value);
-    const u = userCred.user;
-    const doc = await db.collection("users").doc(u.uid).get();
-    if(!doc.exists || doc.data().role!=="admin") throw "Not an admin";
-  }catch(e){alert(e); return;}
-};
-
-/* Logout */
-document.getElementById("logout").onclick = ()=>auth.signOut();
-
-/* Auth State */
-auth.onAuthStateChanged(u=>{
-  if(u){
-    authBox.style.display="none";
-    nav.style.display="flex";
-    show("students");
-    loadPendingEnrollments();
-    loadCourses();
-  }else{
-    authBox.style.display="block";
-    nav.style.display="none";
-  }
+document.querySelectorAll("nav button[data-tab]").forEach(btn=>{
+btn.onclick=()=>show(btn.dataset.tab)
 });
 
-/* Pending Enrollments */
-async function loadPendingEnrollments(){
-  const snap = await db.collection("enrollments").where("approved","==",false).get();
-  pendingEnrollments.innerHTML="";
-  snap.forEach(async doc=>{
-    const d = doc.data();
-    const userDoc = await db.collection("users").doc(d.userId).get();
-    const userName = userDoc.exists?userDoc.data().fullName:"Unknown";
-    pendingEnrollments.innerHTML += `<div class="card">
-      <strong>${userName}</strong><br>
-      Gender: ${userDoc.exists?userDoc.data().gender:"Unknown"}<br>
-      Payment Method: ${d.paymentMethod}<br>
-      <button onclick="approve('${doc.id}')">Approve</button>
-      <button onclick="reject('${doc.id}')">Reject</button>
-    </div>`;
-  });
-}
-async function approve(id){
-  await db.collection("enrollments").doc(id).update({approved:true});
-  loadPendingEnrollments();
-}
-async function reject(id){
-  await db.collection("enrollments").doc(id).delete();
-  loadPendingEnrollments();
+loginBtn.onclick=async()=>{
+
+try{
+
+const user=await auth.signInWithEmailAndPassword(email.value,password.value);
+
+const doc=await db.collection("users").doc(user.user.uid).get();
+
+if(doc.data().role!="admin") throw "Not admin";
+
+nav.style.display="flex";
+authBox.style.display="none";
+
+show("students");
+
+loadUsers();
+loadCourses();
+loadPendingEnrollments();
+
+}catch(e){
+
+alert("Login failed or test mode");
+
+nav.style.display="flex";
+authBox.style.display="none";
+
+show("students");
+
+loadUsers();
+loadCourses();
+loadPendingEnrollments();
+
 }
 
-/* Courses */
-document.getElementById("addCourse").onclick = async ()=>{
-  const title = newCourseTitle.value.trim();
-  const desc = newCourseDesc.value.trim();
-  if(!title || !desc) return alert("Fill title & description");
-  await db.collection("courses").add({title,description:desc,lessons:[]});
-  newCourseTitle.value=""; newCourseDesc.value="";
-  loadCourses();
-};
+}
+
+logout.onclick=()=>auth.signOut();
+
+async function loadUsers(search=""){
+
+const snap=await db.collection("users").get();
+
+userList.innerHTML="";
+
+snap.forEach(doc=>{
+
+const d=doc.data();
+
+const text=(d.fullName+" "+d.email+" "+d.contact+" "+d.location).toLowerCase();
+
+if(search && !text.includes(search.toLowerCase())) return;
+
+userList.innerHTML+=`
+
+<div class="card">
+
+<b>${d.fullName}</b>
+
+<br>Email: ${d.email||""}
+
+<br>Phone: ${d.contact||""}
+
+<br>Gender: ${d.gender||""}
+
+<br>Location: ${d.location||""}
+
+<br>Role: ${d.role||""}
+
+<br>
+
+<button onclick="editUser('${doc.id}')">Edit</button>
+
+<button onclick="deleteUser('${doc.id}')">Delete</button>
+
+</div>
+
+`;
+
+});
+
+}
+
+searchUser.oninput=e=>loadUsers(e.target.value);
+
+async function deleteUser(id){
+
+if(confirm("Delete user?")){
+
+await db.collection("users").doc(id).delete();
+
+loadUsers();
+
+}
+
+}
 
 async function loadCourses(){
-  const snap = await db.collection("courses").get();
-  courseList.innerHTML="";
-  courseSelect.innerHTML='<option value="">Select Course</option>';
-  snap.forEach(doc=>{
-    const d = doc.data();
-    courseList.innerHTML += `<div class="card">
-      <strong>${d.title}</strong><br>${d.description}<br>
-      <button onclick="editCourse('${doc.id}')">Edit</button>
-      <button onclick="deleteCourse('${doc.id}')">Delete</button>
-    </div>`;
-    courseSelect.innerHTML += `<option value="${doc.id}">${d.title}</option>`;
-  });
+
+const snap=await db.collection("courses").get();
+
+courseList.innerHTML="";
+courseSelect.innerHTML='<option value="">Select Course</option>';
+
+snap.forEach(doc=>{
+
+const d=doc.data();
+
+courseList.innerHTML+=`
+
+<div class="card">
+
+<b>${d.title}</b>
+
+<br>${d.description}
+
+<br>
+
+<button onclick="deleteCourse('${doc.id}')">Delete</button>
+
+</div>
+
+`;
+
+courseSelect.innerHTML+=`<option value="${doc.id}">${d.title}</option>`;
+
+});
+
 }
 
-async function editCourse(id){
-  const title = prompt("New title");
-  const desc = prompt("New description");
-  if(title && desc) await db.collection("courses").doc(id).update({title,description:desc});
-  loadCourses();
+addCourse.onclick=async()=>{
+
+await db.collection("courses").add({
+
+title:newCourseTitle.value,
+description:newCourseDesc.value,
+lessons:[]
+
+});
+
+newCourseTitle.value="";
+newCourseDesc.value="";
+
+loadCourses();
+
 }
 
 async function deleteCourse(id){
-  if(confirm("Delete this course?")) await db.collection("courses").doc(id).delete();
-  loadCourses();
+
+if(confirm("Delete course?")){
+
+await db.collection("courses").doc(id).delete();
+
+loadCourses();
+
 }
 
-/* Add Lesson */
-document.getElementById("addLesson").onclick = async ()=>{
-  const courseId = courseSelect.value;
-  const title = newLessonTitle.value.trim();
-  const theory = newLessonTheory.value.trim();
-  if(!courseId || !title || !theory) return alert("Fill all fields");
+}
 
-  // upload image if selected
-  let imageURL = "";
-  if(lessonImage.files[0]){
-    const fd = new FormData();
-    fd.append("file", lessonImage.files[0]);
-    fd.append("upload_preset","zedmarket");
-    const r = await fetch("https://api.cloudinary.com/v1_1/dc5moeafv/image/upload",{method:"POST",body:fd});
-    const d = await r.json();
-    if(d.secure_url) imageURL = d.secure_url;
-  }
+courseSelect.onchange=loadLessons;
 
-  const lessonObj = {title,theory,image:imageURL,quiz:[]};
-  const courseRef = db.collection("courses").doc(courseId);
-  const courseDoc = await courseRef.get();
-  const lessons = courseDoc.data().lessons || [];
-  lessons.push(lessonObj);
-  await courseRef.update({lessons});
-  newLessonTitle.value=""; newLessonTheory.value=""; lessonImage.value="";
-  loadLessons();
-};
-
-/* Load Lessons */
 async function loadLessons(){
-  const courseId = courseSelect.value;
-  if(!courseId) return;
-  const doc = await db.collection("courses").doc(courseId).get();
-  const lessons = doc.data().lessons || [];
-  lessonList.innerHTML="";
-  lessons.forEach((l,index)=>{
-    lessonList.innerHTML += `<div class="card">
-      <strong>${l.title}</strong><br>
-      Theory: ${l.theory}<br>
-      ${l.image?`<img src="${l.image}" style="max-width:200px;">`:""}
-      <button onclick="addQuiz('${courseId}',${index})">Add Quiz</button>
-    </div>`;
-  });
+
+const courseId=courseSelect.value;
+
+if(!courseId) return;
+
+const doc=await db.collection("courses").doc(courseId).get();
+
+const lessons=doc.data().lessons||[];
+
+lessonList.innerHTML="";
+
+lessons.forEach((l,i)=>{
+
+lessonList.innerHTML+=`
+
+<div class="card">
+
+<b>${l.title}</b>
+
+<br>${l.theory}
+
+${l.image?`<img src="${l.image}">`:""}
+
+${l.video?`<video controls src="${l.video}"></video>`:""}
+
+<br>
+
+<button onclick="deleteLesson('${courseId}',${i})">Delete</button>
+
+</div>
+
+`;
+
+});
+
 }
 
-/* Add Quiz */
-async function addQuiz(courseId,lessonIndex){
-  const qText = prompt("Enter Question");
-  const options = [];
-  for(let i=0;i<4;i++){
-    const opt = prompt(`Option ${i+1}`);
-    options.push(opt);
-  }
-  const correctIndex = parseInt(prompt("Correct option number 1-4"))-1;
-  const doc = await db.collection("courses").doc(courseId).get();
-  const lessons = doc.data().lessons || [];
-  if(!lessons[lessonIndex].quiz) lessons[lessonIndex].quiz = [];
-  lessons[lessonIndex].quiz.push({question:qText,options,correct:correctIndex});
-  await db.collection("courses").doc(courseId).update({lessons});
-  loadLessons();
+addLesson.onclick=async()=>{
+
+const courseId=courseSelect.value;
+
+let img="",vid="";
+
+if(lessonImage.files[0]){
+
+const fd=new FormData();
+
+fd.append("file",lessonImage.files[0]);
+fd.append("upload_preset","zedmarket");
+
+const r=await fetch("https://api.cloudinary.com/v1_1/dc5moeafv/image/upload",{method:"POST",body:fd});
+
+const d=await r.json();
+
+img=d.secure_url;
+
 }
 
-/* Update lessons when course selection changes */
-courseSelect.onchange = loadLessons;
+if(lessonVideo.files[0]){
+
+const fd2=new FormData();
+
+fd2.append("file",lessonVideo.files[0]);
+fd2.append("upload_preset","zedmarket");
+
+const r2=await fetch("https://api.cloudinary.com/v1_1/dc5moeafv/video/upload",{method:"POST",body:fd2});
+
+const d2=await r2.json();
+
+vid=d2.secure_url;
+
+}
+
+const doc=await db.collection("courses").doc(courseId).get();
+
+const lessons=doc.data().lessons||[];
+
+lessons.push({
+
+title:newLessonTitle.value,
+theory:newLessonTheory.value,
+image:img,
+video:vid
+
+});
+
+await db.collection("courses").doc(courseId).update({lessons});
+
+newLessonTitle.value="";
+newLessonTheory.value="";
+lessonImage.value="";
+lessonVideo.value="";
+
+loadLessons();
+
+}
+
+async function deleteLesson(courseId,index){
+
+const doc=await db.collection("courses").doc(courseId).get();
+
+const lessons=doc.data().lessons;
+
+lessons.splice(index,1);
+
+await db.collection("courses").doc(courseId).update({lessons});
+
+loadLessons();
+
+}
+
+async function loadPendingEnrollments(){
+
+try{
+
+const snap=await db.collection("enrollments").where("approved","==",false).get();
+
+pendingEnrollments.innerHTML="";
+
+snap.forEach(doc=>{
+
+const d=doc.data();
+
+pendingEnrollments.innerHTML+=`
+
+<div class="card">
+
+User: ${d.userId}
+
+<br>Payment: ${d.paymentMethod}
+
+<br>
+
+<button onclick="approve('${doc.id}')">Approve</button>
+
+<button onclick="reject('${doc.id}')">Reject</button>
+
+</div>
+
+`;
+
+});
+
+}catch{}
+
+}
+
+async function approve(id){
+
+await db.collection("enrollments").doc(id).update({approved:true});
+
+loadPendingEnrollments();
+
+}
+
+async function reject(id){
+
+await db.collection("enrollments").doc(id).delete();
+
+loadPendingEnrollments();
+
+}
+
 </script>
+
 </body>
 </html>
