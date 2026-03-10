@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>HB Skills Academy - Admin Portal</title>
+<title>HB Skills Academy ULTRA - Admin Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 :root{--green:#198754;--orange:#ff8c00;--dark:#0f2a44;}
@@ -10,29 +10,27 @@ body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
 header{background:var(--dark);color:#fff;padding:15px;text-align:center;}
 header div:first-child{font-size:24px;font-weight:bold;}
 header div:last-child{font-size:14px;color:#fff;opacity:0.85;}
-nav{display:flex;gap:5px;background:var(--orange);padding:8px;flex-wrap:wrap;}
+nav{display:none;gap:5px;background:var(--orange);padding:8px;flex-wrap:wrap;}
 nav button{flex:1;border:none;padding:10px;color:#fff;border-radius:6px;font-size:15px;cursor:pointer;margin:2px;}
 nav button.active{background:var(--green);}
 section{display:none;padding:15px;}
 input,textarea,select,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
 button{background:var(--green);color:#fff;font-weight:bold;cursor:pointer;}
 .card{background:#fff;border-radius:10px;padding:10px;margin:10px 0;box-shadow:0 2px 5px rgba(0,0,0,.1);}
+img,video{width:100%;height:auto;max-height:300px;object-fit:contain;border-radius:8px;background:#eee;margin-top:10px;}
 .badge{display:inline-block;background:var(--orange);color:#000;padding:3px 6px;border-radius:4px;font-size:12px;margin-left:4px;}
 .approved{background:var(--green);color:#fff;}
 .pending{background:#ffc107;color:#000;}
-img,video{max-width:200px;margin-top:10px;}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;}
-.modal-content{background:#fff;padding:20px;border-radius:10px;width:90%;max-width:500px;}
-.close-btn{float:right;cursor:pointer;color:red;font-weight:bold;}
 </style>
 </head>
 <body>
 
 <header>
-  <div>HB Skills Academy</div>
+  <div>HB Skills Academy ULTRA</div>
   <div>Admin Portal</div>
 </header>
 
+<!-- Login -->
 <section id="authBox">
   <h3>Admin Login</h3>
   <input id="email" placeholder="Email">
@@ -40,208 +38,139 @@ img,video{max-width:200px;margin-top:10px;}
   <button id="loginBtn">Login</button>
 </section>
 
+<!-- Navigation -->
 <nav id="nav">
-  <button data-tab="students" class="active">Enrollments</button>
+  <button data-tab="enrollments" class="active">Pending Enrollments</button>
   <button data-tab="courses">Courses</button>
-  <button data-tab="lessons">Lessons & Media</button>
-  <button data-tab="users">Users</button>
   <button id="logout">Logout</button>
 </nav>
 
-<section id="students">
+<!-- Pending Enrollments -->
+<section id="enrollments">
   <h3>Pending Enrollments</h3>
-  <div id="pendingEnrollments">Loading...</div>
+  <div id="pendingList">Loading...</div>
 </section>
 
+<!-- Courses -->
 <section id="courses">
   <h3>Manage Courses</h3>
-  <input id="newCourseTitle" placeholder="New Course Title">
+  <input id="newCourseTitle" placeholder="Course Title">
   <textarea id="newCourseDesc" placeholder="Course Description"></textarea>
+  <input id="newCoursePrice" type="number" placeholder="Price (K)">
   <button id="addCourse">Add Course</button>
   <div id="courseList">Loading...</div>
 </section>
 
-<section id="lessons">
-  <h3>Lessons & Media</h3>
-  <select id="courseSelect">
-    <option value="">Select Course</option>
-  </select>
-  <input id="newLessonTitle" placeholder="Lesson Title">
-  <textarea id="newLessonTheory" placeholder="Lesson Theory Content"></textarea>
-  <input type="file" id="lessonImage" accept="image/*">
-  <input type="file" id="lessonVideo" accept="video/*">
-  <button id="addLesson">Add Lesson</button>
-  <div id="lessonList">Select a course to load lessons</div>
-</section>
-
-<section id="users">
-  <h3>All Users</h3>
-  <input id="searchUser" placeholder="Search Users by Name or Email">
-  <div id="userList">Loading...</div>
-</section>
-
-<!-- Modal -->
-<div id="editModal" class="modal">
-  <div class="modal-content">
-    <span class="close-btn" id="closeModal">&times;</span>
-    <h3 id="modalTitle">Edit Item</h3>
-    <input id="modalInput1" placeholder="Field 1">
-    <textarea id="modalInput2" placeholder="Field 2"></textarea>
-    <button id="saveModal">Save</button>
-  </div>
-</div>
-
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
 <script>
 // Firebase Init
-firebase.initializeApp({apiKey:"AIzaSyDhRFgn7nXoZlRf-GX7XakwUYrEMFZDgrI",authDomain:"pa-mwera.firebaseapp.com",projectId:"pa-mwera"});
+firebase.initializeApp({
+  apiKey:"AIzaSyDhRFgn7nXoZlRf-GX7XakwUYrEMFZDgrI",
+  authDomain:"pa-mwera.firebaseapp.com",
+  projectId:"pa-mwera",
+  storageBucket:"pa-mwera.appspot.com"
+});
+
 const auth=firebase.auth();
 const db=firebase.firestore();
+const storage=firebase.storage();
 
-// Elements
+/* Elements */
 const authBox=document.getElementById("authBox");
 const nav=document.getElementById("nav");
 const email=document.getElementById("email");
 const password=document.getElementById("password");
-const pendingEnrollments=document.getElementById("pendingEnrollments");
+const pendingList=document.getElementById("pendingList");
 const courseList=document.getElementById("courseList");
 const newCourseTitle=document.getElementById("newCourseTitle");
 const newCourseDesc=document.getElementById("newCourseDesc");
-const courseSelect=document.getElementById("courseSelect");
-const newLessonTitle=document.getElementById("newLessonTitle");
-const newLessonTheory=document.getElementById("newLessonTheory");
-const lessonImage=document.getElementById("lessonImage");
-const lessonVideo=document.getElementById("lessonVideo");
-const lessonList=document.getElementById("lessonList");
-const userList=document.getElementById("userList");
-const searchUser=document.getElementById("searchUser");
-const editModal=document.getElementById("editModal");
-const closeModal=document.getElementById("closeModal");
-const modalTitle=document.getElementById("modalTitle");
-const modalInput1=document.getElementById("modalInput1");
-const modalInput2=document.getElementById("modalInput2");
-const saveModal=document.getElementById("saveModal");
-let currentEdit={type:'',id:'',extra:''};
+const newCoursePrice=document.getElementById("newCoursePrice");
 
-// Navigation
-function show(id){document.querySelectorAll("section").forEach(s=>s.style.display="none");document.getElementById(id).style.display="block";document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));const btn=document.querySelector(`nav button[data-tab="${id}"]`);if(btn)btn.classList.add("active");}
+/* NAVIGATION */
+function show(id){
+  document.querySelectorAll("section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  const btn=document.querySelector(`nav button[data-tab="${id}"]`);
+  if(btn) btn.classList.add("active");
+}
 document.querySelectorAll("nav button[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
 
-// Admin Login (temporary bypass for testing)
+/* LOGIN */
 document.getElementById("loginBtn").onclick=async()=>{
   try{
     const userCred=await auth.signInWithEmailAndPassword(email.value,password.value);
     const u=userCred.user;
     const doc=await db.collection("users").doc(u.uid).get();
-    if(!doc.exists||doc.data().role!="admin")throw"Not an admin";
-  }catch(e){
-    alert(e+"\nUsing test mode UI.");
+    if(!doc.exists||doc.data().role!=="admin") throw "Not an admin!";
     authBox.style.display="none";
     nav.style.display="flex";
-    show("students");
+    show("enrollments");
     loadPendingEnrollments();
     loadCourses();
-    loadUsers();
+  }catch(e){
+    alert(e);
   }
 }
 document.getElementById("logout").onclick=()=>auth.signOut();
 
-// Enrollments
+/* PENDING ENROLLMENTS */
 async function loadPendingEnrollments(){
-  try{
-    const snap=await db.collection("enrollments").where("approved","==",false).get();
-    pendingEnrollments.innerHTML="";
-    if(snap.empty) pendingEnrollments.innerHTML="<p>No pending enrollments</p>";
-    snap.forEach(async doc=>{
-      const d=doc.data();
-      const userDoc=await db.collection("users").doc(d.userId).get();
-      const userName=userDoc.exists?userDoc.data().fullName:"Unknown";
-      pendingEnrollments.innerHTML+=`<div class="card"><strong>${userName}</strong><br>Gender: ${userDoc.exists?userDoc.data().gender:"Unknown"}<br>Payment Method: ${d.paymentMethod}<br><button onclick="approve('${doc.id}')">Approve</button><button onclick="reject('${doc.id}')">Reject</button></div>`;
-    });
-  }catch(e){pendingEnrollments.innerHTML="<p>No pending enrollments or test mode</p>";}
+  const snap=await db.collection("enrollments").where("approved","==",false).get();
+  pendingList.innerHTML="";
+  if(snap.empty){pendingList.innerHTML="<p>No pending enrollments</p>"; return;}
+  snap.forEach(async doc=>{
+    const d=doc.data();
+    const userDoc=await db.collection("users").doc(d.userId).get();
+    const userName=userDoc.exists?userDoc.data().fullName:"Unknown";
+    pendingList.innerHTML+=`<div class="card">
+      <strong>${userName}</strong><br>
+      Payment: ${d.paymentMethod}<br>
+      <a href="${d.paymentProof}" target="_blank">View Proof</a><br>
+      <button onclick="approve('${doc.id}')">Approve</button>
+      <button onclick="reject('${doc.id}')">Reject</button>
+    </div>`;
+  });
 }
-async function approve(id){try{await db.collection("enrollments").doc(id).update({approved:true});}catch{}loadPendingEnrollments();}
-async function reject(id){try{await db.collection("enrollments").doc(id).delete();}catch{}loadPendingEnrollments();}
+async function approve(id){await db.collection("enrollments").doc(id).update({approved:true}); loadPendingEnrollments();}
+async function reject(id){await db.collection("enrollments").doc(id).delete(); loadPendingEnrollments();}
 
-// Courses
+/* COURSES */
 document.getElementById("addCourse").onclick=async()=>{
   const title=newCourseTitle.value.trim();
   const desc=newCourseDesc.value.trim();
-  if(!title||!desc) return alert("Fill all fields");
-  await db.collection("courses").add({title,description:desc,lessons:[]});
-  newCourseTitle.value=""; newCourseDesc.value="";
+  const price=Number(newCoursePrice.value);
+  if(!title||!desc||!price) return alert("Fill all fields");
+  await db.collection("courses").add({title,description:desc,price,lessons:[]});
+  newCourseTitle.value=""; newCourseDesc.value=""; newCoursePrice.value="";
   loadCourses();
 }
 async function loadCourses(){
   const snap=await db.collection("courses").get();
-  courseList.innerHTML=""; courseSelect.innerHTML='<option value="">Select Course</option>';
+  courseList.innerHTML="";
   if(snap.empty) courseList.innerHTML="<p>No courses yet</p>";
   snap.forEach(doc=>{
     const d=doc.data();
-    courseList.innerHTML+=`<div class="card"><strong>${d.title}</strong><br>${d.description}<br><button onclick="openEditModal('course','${doc.id}')">Edit</button><button onclick="deleteCourse('${doc.id}')">Delete</button></div>`;
-    courseSelect.innerHTML+=`<option value="${doc.id}">${d.title}</option>`;
+    courseList.innerHTML+=`<div class="card">
+      <strong>${d.title}</strong> (${d.price?`K${d.price}`:'Free'})<br>${d.description}
+    </div>`;
   });
 }
-async function deleteCourse(id){if(confirm("Delete this course?")) await db.collection("courses").doc(id).delete(); loadCourses();}
 
-// Lessons
-async function loadLessons(){
-  const courseId=courseSelect.value;
-  if(!courseId){lessonList.innerHTML="Select a course to load lessons"; return;}
-  const doc=await db.collection("courses").doc(courseId).get();
-  const lessons=doc.data().lessons||[];
-  lessonList.innerHTML="";
-  if(lessons.length===0) lessonList.innerHTML="<p>No lessons yet</p>";
-  lessons.forEach((l,index)=>{
-    lessonList.innerHTML+=`<div class="card"><strong>${l.title}</strong><br>Theory: ${l.theory}<br>${l.image?`<img src='${l.image}'>`:''}${l.video?`<video src='${l.video}' controls></video>`:''}<br><button onclick="openEditModal('lesson','${courseId}',${index})">Edit</button></div>`;
-  });
-}
-courseSelect.onchange=loadLessons;
-document.getElementById("addLesson").onclick=async()=>{
-  const courseId=courseSelect.value;
-  const title=newLessonTitle.value.trim();
-  const theory=newLessonTheory.value.trim();
-  if(!courseId||!title||!theory) return alert("Fill all fields");
-  let imageURL='', videoURL='';
-  if(lessonImage.files[0]){const fd=new FormData(); fd.append('file',lessonImage.files[0]); fd.append('upload_preset','zedmarket'); const r=await fetch('https://api.cloudinary.com/v1_1/dc5moeafv/image/upload',{method:'POST',body:fd}); const d=await r.json(); imageURL=d.secure_url||'';}
-  if(lessonVideo.files[0]){const fd2=new FormData(); fd2.append('file',lessonVideo.files[0]); fd2.append('upload_preset','zedmarket'); const r2=await fetch('https://api.cloudinary.com/v1_1/dc5moeafv/video/upload',{method:'POST',body:fd2}); const d2=await r2.json(); videoURL=d2.secure_url||'';}
-  const doc=await db.collection('courses').doc(courseId).get();
-  const lessons=doc.data().lessons||[];
-  lessons.push({title,theory,image:imageURL,video:videoURL,quiz:[]});
-  await db.collection('courses').doc(courseId).update({lessons});
-  newLessonTitle.value=''; newLessonTheory.value=''; lessonImage.value=''; lessonVideo.value='';
-  loadLessons();
-}
-
-// Users
-async function loadUsers(search=''){const snap=await db.collection('users').get(); userList.innerHTML=''; if(snap.empty) userList.innerHTML='<p>No users yet</p>'; snap.forEach(doc=>{const d=doc.data(); if(search&&!d.fullName.toLowerCase().includes(search.toLowerCase())&&!d.email.includes(search)) return; userList.innerHTML+=`<div class="card"><strong>${d.fullName}</strong> (${d.email})<br>Role: ${d.role}<br><button onclick="openEditModal('user','${doc.id}')">Edit</button><button onclick="deleteUser('${doc.id}')">Delete</button></div>`;});}
-searchUser.oninput=e=>loadUsers(e.target.value);
-async function deleteUser(id){if(confirm('Delete this user?')) await db.collection('users').doc(id).delete(); loadUsers();}
-
-// Modal
-function openEditModal(type,id,extra=''){currentEdit={type,id,extra}; editModal.style.display='flex';
-  if(type==='course'){modalTitle.innerText='Edit Course'; db.collection('courses').doc(id).get().then(doc=>{modalInput1.value=doc.data().title; modalInput2.value=doc.data().description;});}
-  else if(type==='lesson'){modalTitle.innerText='Edit Lesson'; db.collection('courses').doc(id).get().then(doc=>{const lesson=doc.data().lessons[extra]; modalInput1.value=lesson.title; modalInput2.value=lesson.theory;});}
-  else if(type==='user'){modalTitle.innerText='Edit User'; db.collection('users').doc(id).get().then(doc=>{modalInput1.value=doc.data().role; modalInput2.value='';});}
-}
-closeModal.onclick=()=>editModal.style.display='none';
-saveModal.onclick=async()=>{
-  if(currentEdit.type==='course'){await db.collection('courses').doc(currentEdit.id).update({title:modalInput1.value,description:modalInput2.value}); loadCourses();}
-  else if(currentEdit.type==='lesson'){const doc=await db.collection('courses').doc(currentEdit.id).get(); const lessons=doc.data().lessons; lessons[currentEdit.extra].title=modalInput1.value; lessons[currentEdit.extra].theory=modalInput2.value; await db.collection('courses').doc(currentEdit.id).update({lessons}); loadLessons();}
-  else if(currentEdit.type==='user'){await db.collection('users').doc(currentEdit.id).update({role:modalInput1.value}); loadUsers();}
-  editModal.style.display='none';
-}
-
-// Initial load for testing
-show('students');
-loadPendingEnrollments();
-loadCourses();
-loadUsers();
+/* AUTH STATE */
+auth.onAuthStateChanged(user=>{
+  if(user){
+    db.collection("users").doc(user.uid).get().then(doc=>{
+      if(!doc.exists||doc.data().role!=="admin") auth.signOut();
+      else {authBox.style.display="none"; nav.style.display="flex"; show("enrollments"); loadPendingEnrollments(); loadCourses();}
+    });
+  }
+});
 </script>
-
 </body>
 </html>
- 
