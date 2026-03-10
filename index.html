@@ -2,25 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>HB Skills Academy ULTRA - Admin Portal</title>
+<title>HB Skills Academy ULTRA - Admin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-:root{--green:#198754;--orange:#ff8c00;--dark:#0f2a44;}
-body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
-header{background:var(--dark);color:#fff;padding:15px;text-align:center;}
-header div:first-child{font-size:24px;font-weight:bold;}
-header div:last-child{font-size:14px;color:#fff;opacity:0.85;}
-nav{display:none;gap:5px;background:var(--orange);padding:8px;flex-wrap:wrap;}
-nav button{flex:1;border:none;padding:10px;color:#fff;border-radius:6px;font-size:15px;cursor:pointer;margin:2px;}
+:root{
+  --green:#198754;
+  --orange:#ff8c00;
+  --dark:#0f2a44;
+  --light:#f4f4f4;
+  --card-bg:#fff;
+}
+body{margin:0;font-family:Arial,sans-serif;background:var(--light);}
+header{background:var(--dark);color:#fff;padding:15px;text-align:center;transition:0.3s;}
+header div:first-child{font-size:26px;font-weight:bold;}
+header div:last-child{font-size:14px;color:#fff;opacity:0.8;}
+nav{display:none;gap:5px;background:var(--orange);padding:8px;flex-wrap:wrap;transition:0.3s;}
+nav button{flex:1;border:none;padding:10px;color:#fff;border-radius:6px;font-size:15px;cursor:pointer;margin:2px;transition:0.3s;}
 nav button.active{background:var(--green);}
-section{display:none;padding:15px;}
+section{display:none;padding:15px;animation:fadeIn 0.5s;}
 input,textarea,select,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
-button{background:var(--green);color:#fff;font-weight:bold;cursor:pointer;}
-.card{background:#fff;border-radius:10px;padding:10px;margin:10px 0;box-shadow:0 2px 5px rgba(0,0,0,.1);}
-img,video{width:100%;height:auto;max-height:300px;object-fit:contain;border-radius:8px;background:#eee;margin-top:10px;}
+button{background:var(--green);color:#fff;font-weight:bold;cursor:pointer;transition:0.3s;}
+button:hover{opacity:0.9;}
+.card{background:var(--card-bg);border-radius:12px;padding:15px;margin:12px 0;box-shadow:0 4px 10px rgba(0,0,0,0.1);transition:0.3s;opacity:0;transform:translateY(30px);}
+.card.show{opacity:1;transform:translateY(0);}
+img,video{width:100%;max-height:300px;border-radius:8px;object-fit:contain;margin-top:8px;}
 .badge{display:inline-block;background:var(--orange);color:#000;padding:3px 6px;border-radius:4px;font-size:12px;margin-left:4px;}
 .approved{background:var(--green);color:#fff;}
 .pending{background:#ffc107;color:#000;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 </style>
 </head>
 <body>
@@ -40,28 +49,43 @@ img,video{width:100%;height:auto;max-height:300px;object-fit:contain;border-radi
 
 <!-- Navigation -->
 <nav id="nav">
-  <button data-tab="enrollments" class="active">Pending Enrollments</button>
+  <button data-tab="users" class="active">Users</button>
   <button data-tab="courses">Courses</button>
+  <button data-tab="enrollments">Enrollments</button>
+  <button data-tab="reviews">Reviews</button>
   <button id="logout">Logout</button>
 </nav>
 
-<!-- Pending Enrollments -->
-<section id="enrollments">
-  <h3>Pending Enrollments</h3>
-  <div id="pendingList">Loading...</div>
+<!-- Users -->
+<section id="users">
+  <h3>All Users</h3>
+  <div id="usersList">Loading...</div>
 </section>
 
 <!-- Courses -->
 <section id="courses">
   <h3>Manage Courses</h3>
-  <input id="newCourseTitle" placeholder="Course Title">
-  <textarea id="newCourseDesc" placeholder="Course Description"></textarea>
-  <input id="newCoursePrice" type="number" placeholder="Price (K)">
+  <input id="courseTitle" placeholder="Course Title">
+  <textarea id="courseDesc" placeholder="Course Description"></textarea>
+  <input type="number" id="coursePrice" placeholder="Price (0=Free)">
+  <input type="file" id="courseCover" accept="image/*">
   <button id="addCourse">Add Course</button>
+  <h4>All Courses</h4>
   <div id="courseList">Loading...</div>
 </section>
 
-<!-- Firebase -->
+<!-- Enrollments -->
+<section id="enrollments">
+  <h3>Pending Enrollments</h3>
+  <div id="enrollmentList">Loading...</div>
+</section>
+
+<!-- Reviews -->
+<section id="reviews">
+  <h3>Student Reviews</h3>
+  <div id="reviewList">Loading...</div>
+</section>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -75,23 +99,25 @@ firebase.initializeApp({
   projectId:"pa-mwera",
   storageBucket:"pa-mwera.appspot.com"
 });
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
 
-const auth=firebase.auth();
-const db=firebase.firestore();
-const storage=firebase.storage();
+// Elements
+const authBox = document.getElementById("authBox");
+const nav = document.getElementById("nav");
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const usersList = document.getElementById("usersList");
+const courseList = document.getElementById("courseList");
+const enrollmentList = document.getElementById("enrollmentList");
+const reviewList = document.getElementById("reviewList");
+const courseTitle = document.getElementById("courseTitle");
+const courseDesc = document.getElementById("courseDesc");
+const coursePrice = document.getElementById("coursePrice");
+const courseCover = document.getElementById("courseCover");
 
-/* Elements */
-const authBox=document.getElementById("authBox");
-const nav=document.getElementById("nav");
-const email=document.getElementById("email");
-const password=document.getElementById("password");
-const pendingList=document.getElementById("pendingList");
-const courseList=document.getElementById("courseList");
-const newCourseTitle=document.getElementById("newCourseTitle");
-const newCourseDesc=document.getElementById("newCourseDesc");
-const newCoursePrice=document.getElementById("newCoursePrice");
-
-/* NAVIGATION */
+/* Navigation */
 function show(id){
   document.querySelectorAll("section").forEach(s=>s.style.display="none");
   document.getElementById(id).style.display="block";
@@ -101,76 +127,154 @@ function show(id){
 }
 document.querySelectorAll("nav button[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
 
-/* LOGIN */
-document.getElementById("loginBtn").onclick=async()=>{
+/* Login */
+document.getElementById("loginBtn").onclick = async ()=>{
   try{
-    const userCred=await auth.signInWithEmailAndPassword(email.value,password.value);
-    const u=userCred.user;
-    const doc=await db.collection("users").doc(u.uid).get();
-    if(!doc.exists||doc.data().role!=="admin") throw "Not an admin!";
-    authBox.style.display="none";
-    nav.style.display="flex";
-    show("enrollments");
-    loadPendingEnrollments();
-    loadCourses();
-  }catch(e){
-    alert(e);
-  }
-}
-document.getElementById("logout").onclick=()=>auth.signOut();
-
-/* PENDING ENROLLMENTS */
-async function loadPendingEnrollments(){
-  const snap=await db.collection("enrollments").where("approved","==",false).get();
-  pendingList.innerHTML="";
-  if(snap.empty){pendingList.innerHTML="<p>No pending enrollments</p>"; return;}
-  snap.forEach(async doc=>{
-    const d=doc.data();
-    const userDoc=await db.collection("users").doc(d.userId).get();
-    const userName=userDoc.exists?userDoc.data().fullName:"Unknown";
-    pendingList.innerHTML+=`<div class="card">
-      <strong>${userName}</strong><br>
-      Payment: ${d.paymentMethod}<br>
-      <a href="${d.paymentProof}" target="_blank">View Proof</a><br>
-      <button onclick="approve('${doc.id}')">Approve</button>
-      <button onclick="reject('${doc.id}')">Reject</button>
-    </div>`;
-  });
-}
-async function approve(id){await db.collection("enrollments").doc(id).update({approved:true}); loadPendingEnrollments();}
-async function reject(id){await db.collection("enrollments").doc(id).delete(); loadPendingEnrollments();}
-
-/* COURSES */
-document.getElementById("addCourse").onclick=async()=>{
-  const title=newCourseTitle.value.trim();
-  const desc=newCourseDesc.value.trim();
-  const price=Number(newCoursePrice.value);
-  if(!title||!desc||!price) return alert("Fill all fields");
-  await db.collection("courses").add({title,description:desc,price,lessons:[]});
-  newCourseTitle.value=""; newCourseDesc.value=""; newCoursePrice.value="";
-  loadCourses();
-}
-async function loadCourses(){
-  const snap=await db.collection("courses").get();
-  courseList.innerHTML="";
-  if(snap.empty) courseList.innerHTML="<p>No courses yet</p>";
-  snap.forEach(doc=>{
-    const d=doc.data();
-    courseList.innerHTML+=`<div class="card">
-      <strong>${d.title}</strong> (${d.price?`K${d.price}`:'Free'})<br>${d.description}
-    </div>`;
-  });
-}
-
-/* AUTH STATE */
-auth.onAuthStateChanged(user=>{
-  if(user){
-    db.collection("users").doc(user.uid).get().then(doc=>{
-      if(!doc.exists||doc.data().role!=="admin") auth.signOut();
-      else {authBox.style.display="none"; nav.style.display="flex"; show("enrollments"); loadPendingEnrollments(); loadCourses();}
-    });
-  }
+    const u = await auth.signInWithEmailAndPassword(email.value,password.value);
+    const doc = await db.collection("users").doc(u.user.uid).get();
+    if(doc.data().role!=="admin") throw "Not admin!";
+    authBox.style.display="none"; nav.style.display="flex";
+    show("users"); loadUsers(); loadCourses(); loadEnrollments(); loadReviews();
+  }catch(e){alert(e);}
+};
+document.getElementById("logout").onclick = ()=>auth.signOut();
+auth.onAuthStateChanged(u=>{
+  if(u){
+    authBox.style.display="none"; nav.style.display="flex";
+    show("users"); loadUsers(); loadCourses(); loadEnrollments(); loadReviews();
+  }else{authBox.style.display="block"; nav.style.display="none"; show("authBox");}
 });
+
+/* Users */
+async function loadUsers(){
+  const snap = await db.collection("users").get();
+  usersList.innerHTML="";
+  snap.forEach(doc=>{
+    const d = doc.data();
+    const div = document.createElement("div");
+    div.className="card show";
+    div.innerHTML = `
+      <strong>${d.name||'No Name'}</strong> (${d.role||'user'})<br>
+      Email: ${d.email||''}<br>
+      Verified: ${d.verified?'✅':'❌'}<br>
+      <button onclick="toggleVerify('${doc.id}',${d.verified})">${d.verified?'Unverify':'Verify'}</button>
+      <button onclick="deleteUser('${doc.id}')">Delete</button>
+    `;
+    usersList.appendChild(div);
+  });
+}
+async function toggleVerify(uid,current){
+  await db.collection("users").doc(uid).update({verified:!current});
+  loadUsers();
+}
+async function deleteUser(uid){
+  if(confirm("Delete this user?")){await db.collection("users").doc(uid).delete(); loadUsers();}
+}
+
+/* Courses */
+async function uploadToCloudinary(file){
+  const fd = new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset","zedmarket");
+  const r = await fetch("https://api.cloudinary.com/v1_1/dc5moeafv/image/upload",{method:"POST",body:fd});
+  const d = await r.json();
+  return d.secure_url;
+}
+document.getElementById("addCourse").onclick = async ()=>{
+  if(!courseTitle.value||!courseDesc.value) return alert("Fill title & desc");
+  let coverURL="";
+  if(courseCover.files[0]) coverURL = await uploadToCloudinary(courseCover.files[0]);
+  await db.collection("courses").add({
+    title:courseTitle.value, description:courseDesc.value,
+    price:Number(coursePrice.value)||0, cover:coverURL, lessons:[]
+  });
+  courseTitle.value=""; courseDesc.value=""; coursePrice.value=""; courseCover.value="";
+  loadCourses();
+};
+async function loadCourses(){
+  const snap = await db.collection("courses").get();
+  courseList.innerHTML="";
+  snap.forEach(doc=>{
+    const d = doc.data();
+    const div = document.createElement("div");
+    div.className="card show";
+    div.innerHTML = `
+      <strong>${d.title}</strong> (${d.price?`K${d.price}`:'Free'})<br>
+      ${d.cover?`<img src="${d.cover}">`:''}
+      <p>${d.description}</p>
+      <button onclick="editCourse('${doc.id}')">Edit</button>
+      <button onclick="deleteCourse('${doc.id}')">Delete</button>
+      <button onclick="manageLessons('${doc.id}')">Lessons</button>
+    `;
+    courseList.appendChild(div);
+  });
+}
+async function deleteCourse(id){if(confirm("Delete course?")){await db.collection("courses").doc(id).delete(); loadCourses();}}
+
+/* Lessons */
+async function manageLessons(courseId){
+  const courseDoc = await db.collection("courses").doc(courseId).get();
+  const course = courseDoc.data();
+  const modal = document.createElement("div");
+  modal.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;";
+  modal.innerHTML = `
+    <div style="background:#fff;padding:20px;border-radius:10px;width:90%;max-width:500px;overflow-y:auto;max-height:80%;">
+      <h4>${course.title} - Lessons</h4>
+      <input id="lessonTitle" placeholder="Lesson Title">
+      <select id="lessonType"><option value="video">Video</option><option value="image">Image</option></select>
+      <input type="file" id="lessonFile">
+      <button id="addLessonBtn">Add Lesson</button>
+      <div id="lessonList"></div>
+      <button id="closeModalBtn" style="background:red;margin-top:5px;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const lessonListDiv = modal.querySelector("#lessonList");
+  function renderLessons(){lessonListDiv.innerHTML="";course.lessons.forEach((l,i)=>{lessonListDiv.innerHTML+=`<div class="card show"><strong>${l.title}</strong> (${l.type})<br>${l.type==='video'?`<video controls src="${l.url}"></video>`:`<img src="${l.url}">`}<br><button onclick="deleteLesson(${i})">Delete</button></div>`})}
+  renderLessons();
+  modal.querySelector("#addLessonBtn").onclick = async ()=>{
+    const t = modal.querySelector("#lessonTitle").value.trim();
+    const f = modal.querySelector("#lessonFile").files[0];
+    const type = modal.querySelector("#lessonType").value;
+    if(!t||!f) return alert("Title & file required");
+    const url = await uploadToCloudinary(f);
+    course.lessons.push({title:t,type,url});
+    await db.collection("courses").doc(courseId).update({lessons:course.lessons});
+    modal.querySelector("#lessonTitle").value=""; modal.querySelector("#lessonFile").value="";
+    renderLessons();
+  };
+  modal.querySelector("#closeModalBtn").onclick = ()=>modal.remove();
+  window.deleteLesson = async (i)=>{course.lessons.splice(i,1); await db.collection("courses").doc(courseId).update({lessons:course.lessons}); renderLessons();}
+}
+
+/* Enrollments */
+async function loadEnrollments(){
+  const snap = await db.collection("enrollments").get();
+  enrollmentList.innerHTML="";
+  snap.forEach(async doc=>{
+    const d = doc.data();
+    const userDoc = await db.collection("users").doc(d.userId).get();
+    const userName = userDoc.exists?userDoc.data().name:'Unknown';
+    const courseDoc = await db.collection("courses").doc(d.courseId).get();
+    const courseTitle = courseDoc.exists?courseDoc.data().title:'Unknown';
+    const proof = d.paymentProof?`<${d.paymentProof.endsWith('.mp4')?'video controls src="'+d.paymentProof+'"':'img src="'+d.paymentProof+'"'}></${d.paymentProof.endsWith('.mp4')?'video':'img'}>`:'';
+    enrollmentList.innerHTML+=`<div class="card show"><strong>${userName}</strong> - ${courseTitle}<br>Sender: ${d.senderName || 'N/A'}<br>${proof}<br>Status: ${d.approved?'<span class="badge approved">Approved</span>':'<span class="badge pending">Pending</span>'}<br><button onclick="approveEnrollment('${doc.id}')">Approve</button><button onclick="rejectEnrollment('${doc.id}')">Reject</button></div>`;
+  });
+}
+async function approveEnrollment(id){await db.collection("enrollments").doc(id).update({approved:true}); loadEnrollments();}
+async function rejectEnrollment(id){await db.collection("enrollments").doc(id).delete(); loadEnrollments();}
+
+/* Reviews */
+async function loadReviews(){
+  const snap = await db.collection("reviews").get();
+  reviewList.innerHTML="";
+  snap.forEach(doc=>{
+    const d = doc.data();
+    reviewList.innerHTML+=`<div class="card show"><strong>${d.userName}</strong><br>Course: ${d.courseTitle}<br>Rating: ${d.rating}/5<br>${d.text}<br><button onclick="deleteReview('${doc.id}')">Delete</button></div>`;
+  });
+}
+async function deleteReview(id){await db.collection("reviews").doc(id).delete(); loadReviews();}
+
 </script>
 </body>
 </html>
