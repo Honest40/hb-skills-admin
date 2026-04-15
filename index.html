@@ -50,10 +50,32 @@ img, video{
   border-radius:10px;
   margin-top:10px;
 }
+
+#adminBar{
+  transition: width 0.3s ease;
+}
 </style>
 </head>
 
 <body>
+    
+    <div id="adminLoader" style="
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.8);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  flex-direction:column;
+  color:#fff;
+">
+  <div style="width:250px;background:#333;height:10px;border-radius:10px;overflow:hidden;">
+    <div id="adminBar" style="width:0%;height:100%;background:#22c55e;"></div>
+  </div>
+  <p id="adminText" style="margin-top:10px;">Uploading...</p>
+</div>
 
 <h2>🔥 LMS ADMIN PRO (FULL SYSTEM)</h2>
 
@@ -80,7 +102,7 @@ img, video{
 <input id="coursePrice" type="number" placeholder="Price">
 <input type="file" id="courseCover">
 
-<button onclick="createCourse()">Create Course</button>
+<button onclick="createCourse(this)">Create Course</button>
 
 <div id="courseList"></div>
 </div>
@@ -103,7 +125,7 @@ img, video{
 <input type="file" id="lessonFile">
 <input id="lessonUrl" placeholder="External URL">
 
-<button onclick="addLesson()">Add Lesson</button>
+<button onclick="addLesson(this)">Add Lesson</button>
 
 <div id="lessonList"></div>
 </div>
@@ -148,16 +170,38 @@ firebase.initializeApp({
 const db = firebase.firestore();
 
 /* CLOUDINARY */
-async function upload(file){
-  const fd = new FormData();
-  fd.append("file",file);
-  fd.append("upload_preset","zedmarket");
+function upload(file){
+  return new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    const fd = new FormData();
 
-  const res = await fetch("https://api.cloudinary.com/v1_1/dc5moeafv/image/upload",{method:"POST",body:fd});
-  const data = await res.json();
-  return data.secure_url;
+    fd.append("file", file);
+    fd.append("upload_preset", "zedmarket");
+
+    xhr.open("POST", "https://api.cloudinary.com/v1_1/dc5moeafv/auto/upload");
+
+    xhr.upload.onprogress = (e)=>{
+      if(e.lengthComputable){
+        const percent = Math.round((e.loaded / e.total) * 100);
+
+        document.getElementById("adminBar").style.width = percent + "%";
+        document.getElementById("adminText").innerText = "Uploading " + percent + "%";
+      }
+    };
+
+  xhr.onload = ()=>{
+  if(xhr.status === 200){
+    const res = JSON.parse(xhr.responseText);
+    resolve(res.secure_url);
+  } else {
+    reject("Upload failed");
+  }
+};
+    xhr.onerror = reject;
+
+    xhr.send(fd);
+  });
 }
-
 /* NAV */
 function showTab(id){
   const sections=["courses","lessons","quiz","payments","users"];
@@ -185,21 +229,44 @@ async function loadStats(){
 }
 
 /* COURSES */
-async function createCourse(){
+async function createCourse(btn){
+  if(!courseTitle.value) return alert("Enter title");
+
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+
+  showAdminLoader();
+  setLoader("Preparing upload...");
+  btn.disabled = false;
+btn.innerText = "Create Course";
   let img="";
   const file = courseCover.files[0];
 
-  if(file) img = await upload(file);
+  try{
+    if(file) img = await upload(file);
 
-  await db.collection("courses").add({
-    title:courseTitle.value,
-    description:courseDesc.value,
-    price:Number(coursePrice.value||0),
-    coverUrl:img,
-    createdAt:Date.now()
-  });
+    setLoader("Saving course...");
 
-  loadCourses();
+    await db.collection("courses").add({
+      title:courseTitle.value,
+      description:courseDesc.value,
+      price:Number(coursePrice.value||0),
+      coverUrl:img,
+      createdAt:Date.now()
+    });
+
+   document.getElementById("adminText").innerHTML = "✅ Completed Successfully";
+
+    setTimeout(()=>{
+      hideAdminLoader();
+      alert("Course created!");
+      loadCourses();
+    },500);
+
+  }catch(e){
+    hideAdminLoader();
+    alert("Upload failed");
+  }
 }
 
 async function loadCourses(){
@@ -252,27 +319,61 @@ async function deleteCourse(id){
 }
 
 /* LESSONS */
-async function addLesson(){
+async function addLesson(btn){
   const courseId = courseSelect.value;
+
+  if(!lessonTitle.value) return alert("Enter lesson title");
+
+  btn.disabled = true;
+  btn.innerText = "Uploading...";
+  
+  btn.disabled = false;
+btn.innerText = "Add Lesson";
 
   let url="";
   const file = lessonFile.files[0];
 
-  if(file) url = await upload(file);
-  else url = lessonUrl.value;
+  try{
 
-  await db.collection("courses").doc(courseId).collection("lessons").add({
-    title:lessonTitle.value,
-    description:lessonDesc.value,
-    type:lessonType.value,
-    url:url,
-    createdAt:Date.now()
-  });
+    if(file){
+      url = await upload(file);
+    } else {
+      url = lessonUrl.value;
+    }
 
-  alert("Lesson added");
-  loadLessons();
+    if(!url){
+      hideAdminLoader();
+      return alert("Add file or URL");
+    }
+
+    const type = detectType(url);
+
+    setLoader("Saving lesson...");
+
+    await db.collection("courses")
+      .doc(courseId)
+      .collection("lessons")
+      .add({
+        title:lessonTitle.value,
+        description:lessonDesc.value,
+        type:type,
+        url:url,
+        createdAt:Date.now()
+      });
+
+   document.getElementById("adminText").innerHTML = "✅ Lesson Uploaded";
+
+    setTimeout(()=>{
+      hideAdminLoader();
+      alert("Lesson added!");
+      loadLessons();
+    },500);
+
+  }catch(e){
+    hideAdminLoader();
+    alert("Upload failed");
+  }
 }
-
 /* LOAD LESSONS */
 async function loadLessons(){
   const courseId = courseSelect.value;
@@ -286,12 +387,20 @@ async function loadLessons(){
     const d=doc.data();
 
     html+=`
-      <div class="card">
-        <b>${d.title}</b>
-        <p>${d.description||""}</p>
-        ${d.url?`<a href="${d.url}" target="_blank">Open</a>`:""}
-      </div>
-    `;
+  <div class="card">
+    <b>${d.title}</b>
+    <p>${d.description||""}</p>
+
+    ${
+      d.type === "video"
+      ? `<video controls src="${d.url}"></video>`
+      : d.type === "image"
+      ? `<img src="${d.url}">`
+      : `<a href="${d.url}" target="_blank">Open Link</a>`
+    }
+
+  </div>
+`;
   });
 
   document.getElementById("lessonList").innerHTML=html;
@@ -328,23 +437,21 @@ async function loadPayments(){
       <div class="card">
         <b>${d.senderName||"No name"}</b>
         <p>Status: ${d.approved?"APPROVED":"PENDING"}</p>
-        ${d.paymentProof?`<img src="${d.paymentProof}">`:""}
+${
+  d.paymentProof
+  ? (
+      d.paymentProof.includes(".mp4")
+      ? `<video controls src="${d.paymentProof}"></video>`
+      : `<img src="${d.paymentProof}">`
+    )
+  : ""
+}
 
         <button onclick="approve('${doc.id}')">Approve</button>
         <button onclick="reject('${doc.id}')">Reject</button>
       </div>
     `;
   });
-}
-
-async function approve(id){
-  await db.collection("enrollments").doc(id).update({approved:true});
-  loadPayments();
-}
-
-async function reject(id){
-  await db.collection("enrollments").doc(id).delete();
-  loadPayments();
 }
 
 /* USERS (FIXED CLEAN VIEW) */
@@ -366,7 +473,7 @@ async function loadUsers(){
 
     usersList.innerHTML+=`
       <div class="card">
-        <b>Email:</b> ${doc.id}<br>
+       <b>Email:</b> ${u.email || "No email"}<br>
         <b>Name:</b> ${u.name||""}<br>
         <b>Phone:</b> ${u.phone||""}<br>
         <b>Bio:</b> ${u.bio||""}
@@ -385,6 +492,54 @@ async function loadAll(){
   loadStats();
 }
 
+function showAdminLoader(){
+  document.getElementById("adminLoader").style.display = "flex";
+}
+
+function hideAdminLoader(){
+  document.getElementById("adminLoader").style.display = "none";
+  document.getElementById("adminBar").style.width = "0%";
+  document.getElementById("adminText").innerText = "Uploading...";
+}
+
+function detectType(url){
+  if(!url) return null;
+
+  url = url.toLowerCase();
+
+  if(url.match(/\.(mp4|webm|ogg)/)) return "video";
+  if(url.match(/\.(jpg|jpeg|png|gif|webp)/)) return "image";
+
+  return "url";
+}
+
+function setLoader(text){
+  document.getElementById("adminText").innerText = text;
+}
+
+async function approve(id){
+  showAdminLoader();
+  setLoader("Approving payment...");
+
+  await db.collection("enrollments").doc(id).update({approved:true});
+
+  hideAdminLoader();
+  loadPayments();
+}
+
+async function reject(id){
+  showAdminLoader();
+  setLoader("Rejecting...");
+
+  await db.collection("enrollments").doc(id).delete();
+
+  hideAdminLoader();
+  loadPayments();
+}
+
+courseSelect.onchange = loadLessons;
+
+setLoader("Finalizing...");
 </script>
 
 </body>
