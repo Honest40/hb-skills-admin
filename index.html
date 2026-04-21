@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+Put your HTML text here<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,6 +6,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+@keyframes fadeIn {
+  from {
+    opacity:0;
+    transform:scale(0.9);
+  }
+  to {
+    opacity:1;
+    transform:scale(1);
+  }
+}
 body{
   font-family:Arial;
   background:#0f172a;
@@ -56,7 +66,16 @@ img, video{
 }
 </style>
 </head>
-
+<div id="toast" style="
+position:fixed;
+bottom:20px;
+right:20px;
+background:#22c55e;
+padding:10px 15px;
+border-radius:8px;
+display:none;
+color:white;
+"></div>
 <body>
     
     <div id="adminLoader" style="
@@ -86,6 +105,7 @@ img, video{
 </div>
 
 <nav>
+    <button onclick="showTab('business')">Business Ideas</button>
 <button onclick="showTab('courses')">Courses</button>
 <button onclick="showTab('lessons')">Lessons</button>
 <button onclick="showTab('quiz')">Quiz</button>
@@ -157,6 +177,49 @@ img, video{
 <div id="usersList"></div>
 </div>
 
+<!-- BUSINESS IDEAS -->
+<div id="business" class="card" style="display:none;">
+<h3>💡 Business Ideas PRO</h3>
+
+<input id="bizSearch" placeholder="Search Business Ideas..." onkeyup="loadBusiness()">
+
+<input id="bizTitle" placeholder="Business Title">
+<textarea id="bizDesc" placeholder="Description"></textarea>
+
+
+<input type="file" id="bizCover">
+
+<input id="bizCapital" placeholder="Capital (e.g K500 - K2000)">
+<input id="bizPricing" placeholder="Pricing Strategy">
+<input id="bizClients" placeholder="Where to find clients">
+
+<select id="bizCategory">
+  <option value="online">Online</option>
+  <option value="physical">Physical</option>
+  <option value="service">Service</option>
+  <option value="student">Student Hustles</option>
+</select>
+
+<select id="bizType">
+    <input id="bizPrice" type="number" placeholder="Price (Only for Premium)">
+  <option value="free">Free</option>
+  <option value="premium">Premium</option>
+</select>
+
+<button onclick="addBusiness(this)">Upload Business Idea</button>
+<button onclick="updateBusiness()">Update Business Idea</button>
+<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">
+<button onclick="filterBiz('all')">All</button>
+<button onclick="filterBiz('online')">Online</button>
+<button onclick="filterBiz('physical')">Physical</button>
+<button onclick="filterBiz('service')">Service</button>
+<button onclick="filterBiz('student')">Student</button>
+</div>
+<h4>🔥 Featured Ideas</h4>
+<div id="featuredBiz"></div>
+
+<div id="bizList"></div>
+</div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
@@ -188,6 +251,7 @@ function upload(file){
         document.getElementById("adminText").innerText = "Uploading " + percent + "%";
       }
     };
+    
 
   xhr.onload = ()=>{
   if(xhr.status === 200){
@@ -204,29 +268,36 @@ function upload(file){
 }
 /* NAV */
 function showTab(id){
-  const sections=["courses","lessons","quiz","payments","users"];
+  const sections=["courses","lessons","quiz","payments","users","business"];
   sections.forEach(s=>{
     document.getElementById(s).style.display = (s===id) ? "block" : "none";
   });
 }
-
 /* LOAD ALL */
-window.onload = () => {
-  loadAll();
+window.onload = async () => {
+  try {
+    await loadAll();
+    loadBusiness();
+    loadFeatured();
+    loadStats();
+  } catch (err) {
+    console.error("Init error:", err);
+  }
 };
-
 /* STATS */
 async function loadStats(){
+    const b = await db.collection("businessIdeas").get();
   const c = await db.collection("courses").get();
   const u = await db.collection("users").get();
   const e = await db.collection("enrollments").get();
 
   document.getElementById("stats").innerHTML=`
+  Business Ideas: ${b.size}<br>
     Courses: ${c.size}<br>
     Users: ${u.size}<br>
     Enrollments: ${e.size}
   `;
-}
+} 
 
 /* COURSES */
 async function createCourse(btn){
@@ -287,10 +358,10 @@ async function loadCourses(){
         ${d.coverUrl ? `<img src="${d.coverUrl}">` : ""}
         <h4>${d.title}</h4>
         <p>${d.description}</p>
-        <b>${d.price>0?"K"+d.price:"FREE"}</b>
+       <b>${d.price > 0 ? "K" + Number(d.price).toLocaleString() : "FREE"}</b>
 
         <button onclick="deleteCourse('${doc.id}')">Delete</button>
-        <button onclick="editCourse('${doc.id}','${d.title}','${d.description}',${d.price})">Edit</button>
+       <button onclick="openCourseEdit('${doc.id}')">Edit</button>
       </div>
     `;
   });
@@ -540,7 +611,460 @@ async function reject(id){
 courseSelect.onchange = loadLessons;
 
 setLoader("Finalizing...");
-</script>
 
+async function addBusiness(btn){
+
+  if(!bizTitle.value || !bizDesc.value){
+    return alert("Fill title and description");
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Uploading...";
+
+  try{
+
+    showAdminLoader();
+    setLoader("Uploading cover...");
+
+    let coverUrl = "";
+    const file = bizCover.files[0];
+
+    if(file){
+      coverUrl = await upload(file);
+    }
+
+    setLoader("Saving business idea...");
+
+   await db.collection("businessIdeas").add({
+  title: bizTitle.value,
+  description: bizDesc.value,
+  coverUrl,
+  capital: bizCapital.value,
+  pricing: bizPricing.value,
+  clients: bizClients.value,
+  category: bizCategory.value,
+  type: bizType.value,
+  price: Number(bizPrice.value || 0), // ✅ NEW
+  boosted: false,
+  likes: 0,
+  views: 0,
+  createdAt: Date.now()
+});
+
+    hideAdminLoader();
+
+   toast("Business Idea Added!");
+
+    // reset
+    bizTitle.value="";
+    bizDesc.value="";
+    bizCover.value="";
+    bizCapital.value="";
+    bizPricing.value="";
+    bizClients.value="";
+
+  }catch(e){
+    hideAdminLoader();
+    alert("Error uploading");
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Upload Business Idea";
+}
+
+async function loadBusiness(){
+  try {
+
+    const search = bizSearch.value?.toLowerCase() || "";
+
+    bizList.innerHTML = "<p>Loading business ideas...</p>";
+
+    const snap = await db.collection("businessIdeas").get();
+
+    if (!snap || snap.empty) {
+      bizList.innerHTML = "<p>No business ideas found 😢</p>";
+      return;
+    }
+
+    bizList.innerHTML = "";
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      if (
+        search &&
+        !d.title?.toLowerCase().includes(search) &&
+        !d.description?.toLowerCase().includes(search)
+      ) return;
+
+bizList.innerHTML += `
+  <div class="card">
+    ${d.coverUrl ? `<img src="${d.coverUrl}">` : ""}
+
+    <h3>${d.title || "No title"}</h3>
+    ${d.type === "premium" 
+  ? `<p style="color:#22c55e;"><b>Price:</b> K${Number(d.price || 0).toLocaleString()}</p>` 
+  : `<p style="color:#38bdf8;"><b>FREE</b></p>`
+}
+    <p>${d.description || ""}</p>
+
+    <p><b>Category:</b> ${d.category || ""}</p>
+    <p><b>Capital:</b> ${d.capital || ""}</p>
+
+    <p>👁 Views: ${d.views || 0}</p>
+    <p>❤️ Likes: ${d.likes || 0}</p>
+
+  <button onclick="editBusiness('${doc.id}')" style="
+background:#f59e0b;
+padding:8px 12px;
+border-radius:8px;
+width:auto;
+margin-right:5px;
+">
+✏️ Edit
+</button>
+    <button onclick="deleteBusiness('${doc.id}')">Delete</button>
+  </div>
+      `;
+    });
+
+  } catch (err) {
+    console.error("loadBusiness error:", err);
+    bizList.innerHTML = "<p style='color:red;'>Error loading business ideas</p>";
+  }
+}
+async function boostBusiness(id){
+
+  showAdminLoader();
+  setLoader("Upgrading idea...");
+
+  await db.collection("businessIdeas").doc(id).update({
+    type: "premium",
+    boosted: true
+  });
+
+  hideAdminLoader();
+  loadBusiness();
+
+  alert("Business upgraded!");
+}
+async function deleteBusiness(id){
+
+  if(!confirm("Are you sure you want to delete this business idea?")) return;
+
+  await db.collection("businessIdeas").doc(id).delete();
+  loadBusiness();
+}
+async function editBusiness(id){
+  const docRef = await db.collection("businessIdeas").doc(id).get();
+  const d = docRef.data();
+
+  window.editingBizId = id;
+
+  editTitle.value = d.title || "";
+  editDesc.value = d.description || "";
+  editCapital.value = d.capital || "";
+  editPricing.value = d.pricing || "";
+  editClients.value = d.clients || "";
+  editCategory.value = d.category || "online";
+ editType.value = d.type || "free";
+bizPrice.value = d.price || 0;
+
+  document.getElementById("editModal").style.display = "flex";
+}
+
+async function viewBusiness(id){
+
+  const ref = db.collection("businessIdeas").doc(id);
+  const doc = await ref.get();
+
+  let views = doc.data().views || 0;
+
+  await ref.update({
+    views: views + 1
+  });
+
+  alert("Business opened!");
+
+  loadBusiness();
+}
+async function likeBusiness(id){
+
+  const ref = db.collection("businessIdeas").doc(id);
+  const doc = await ref.get();
+
+  let likes = doc.data().likes || 0;
+
+  await ref.update({
+    likes: likes + 1
+  });
+
+  loadBusiness();
+}
+let currentFilter = "all";
+
+function filterBiz(type){
+  currentFilter = type;
+  loadBusiness();
+}
+async function updateBusiness(){
+
+  if(!window.editingBizId){
+    return alert("Select business to edit first");
+  }
+
+ await db.collection("businessIdeas")
+  .doc(window.editingBizId)
+  .update({
+    title: editTitle.value,
+    description: editDesc.value,
+    capital: editCapital.value,
+    pricing: editPricing.value,
+    clients: editClients.value,
+    category: editCategory.value,
+    type: editType.value,
+    price: Number(bizPrice.value || 0)
+  });
+  alert("Updated successfully!");
+
+  loadBusiness();
+}
+async function loadFeatured(){
+
+  const snap = await db.collection("businessIdeas")
+    .where("boosted","==",true)
+    .limit(3)
+    .get();
+
+  featuredBiz.innerHTML = "";
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    featuredBiz.innerHTML += `
+      <div class="card" style="border:2px solid gold;">
+          <p>❤️ Likes: ${d.likes || 0}</p>
+
+<button onclick="likeBusiness('${doc.id}')">❤️ Like</button>
+      <div class="card">
+        <h3>${d.title}</h3>
+        <p>${d.description}</p>
+      </div>
+    `;
+  });
+}
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.style.display = "block";
+
+  setTimeout(()=>{
+    t.style.display = "none";
+  },2000);
+};
+
+async function saveEdit(){
+  if(!window.editingBizId) return;
+
+  showAdminLoader();
+  setLoader("Updating business...");
+
+  await db.collection("businessIdeas")
+    .doc(window.editingBizId)
+    .update({
+      title: editTitle.value,
+      description: editDesc.value,
+      capital: editCapital.value,
+      pricing: editPricing.value,
+      clients: editClients.value,
+      category: editCategory.value,
+      type: editType.value
+    });
+
+  hideAdminLoader();
+  closeModal();
+  loadBusiness();
+
+  toast("Updated successfully 🚀");
+}
+
+function closeModal(){
+  document.getElementById("editModal").style.display = "none";
+}
+async function openCourseEdit(id){
+  const docRef = await db.collection("courses").doc(id).get();
+  const d = docRef.data();
+
+  window.editingCourseId = id;
+
+  editCourseTitle.value = d.title || "";
+  editCourseDesc.value = d.description || "";
+  editCoursePrice.value = d.price || 0;
+
+  document.getElementById("courseModal").style.display = "flex";
+}
+
+async function saveCourseEdit(){
+  if(!window.editingCourseId) return;
+
+  showAdminLoader();
+  setLoader("Updating course...");
+
+  await db.collection("courses")
+    .doc(window.editingCourseId)
+    .update({
+      title: editCourseTitle.value,
+      description: editCourseDesc.value,
+      price: Number(editCoursePrice.value)
+    });
+
+  hideAdminLoader();
+  closeCourseModal();
+  loadCourses();
+
+  toast("Course updated 🚀");
+}
+
+function closeCourseModal(){
+  document.getElementById("courseModal").style.display = "none";
+}
+let currentUserId = "testUser"; // replace later with real auth user
+
+async function checkAccess(){
+  const snap = await db.collection("enrollments")
+    .where("userId","==",currentUserId)
+    .where("approved","==",true)
+    .get();
+
+  return !snap.empty; // true = has access
+}
+</script>
+<div id="editModal" style="
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.75);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:9999;
+backdrop-filter: blur(5px);
+">
+
+  <div style="
+    background:#1e293b;
+    padding:20px;
+    border-radius:14px;
+    width:95%;
+    max-width:450px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);
+    animation:fadeIn 0.3s ease;
+  ">
+
+    <!-- HEADER -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+      <h3 style="margin:0;">✏️ Edit Business</h3>
+      <span onclick="closeModal()" style="cursor:pointer;font-size:18px;">❌</span>
+    </div>
+
+    <!-- FORM -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <input id="editTitle" placeholder="Title">
+      <textarea id="editDesc" placeholder="Description"></textarea>
+      <input id="bizPrice" type="number" placeholder="Price (Only for Premium)">
+
+      <input id="editCapital" placeholder="Capital">
+      <input id="editPricing" placeholder="Pricing Strategy">
+      <input id="editClients" placeholder="Target Clients">
+
+      <select id="editCategory">
+        <option value="online">Online</option>
+        <option value="physical">Physical</option>
+        <option value="service">Service</option>
+        <option value="student">Student</option>
+      </select>
+
+      <select id="editType">
+        <option value="free">Free</option>
+        <option value="premium">Premium</option>
+      </select>
+
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="display:flex;gap:10px;margin-top:15px;">
+      <button onclick="saveEdit()" style="background:#22c55e;flex:1;">
+        💾 Save
+      </button>
+
+      <button onclick="closeModal()" style="background:#ef4444;flex:1;">
+        Cancel
+      </button>
+    </div>
+
+  </div>
+</div>
+    <select id="editCategory">
+      <option value="online">Online</option>
+      <option value="physical">Physical</option>
+      <option value="service">Service</option>
+      <option value="student">Student</option>
+    </select>
+
+    <select id="editType">
+      <option value="free">Free</option>
+      <option value="premium">Premium</option>
+    </select>
+
+    <button onclick="saveEdit()">💾 Save Changes</button>
+    <button onclick="closeModal()" style="background:#ef4444;">Cancel</button>
+
+  </div>
+</div>
+<div id="courseModal" style="
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.75);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:9999;
+backdrop-filter: blur(5px);
+">
+
+  <div style="
+    background:#1e293b;
+    padding:20px;
+    border-radius:14px;
+    width:95%;
+    max-width:450px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);
+    animation:fadeIn 0.3s ease;
+  ">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+      <h3 style="margin:0;">✏️ Edit Course</h3>
+      <span onclick="closeCourseModal()" style="cursor:pointer;">❌</span>
+    </div>
+
+    <input id="editCourseTitle" placeholder="Title">
+    <textarea id="editCourseDesc" placeholder="Description"></textarea>
+    <input id="editCoursePrice" type="number" placeholder="Price">
+
+    <div style="display:flex;gap:10px;margin-top:15px;">
+      <button onclick="saveCourseEdit()" style="background:#22c55e;flex:1;">
+        💾 Save
+      </button>
+
+      <button onclick="closeCourseModal()" style="background:#ef4444;flex:1;">
+        Cancel
+      </button>
+    </div>
+
+  </div>
+</div>
 </body>
 </html>
