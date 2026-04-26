@@ -66,7 +66,9 @@ img, video{
 }
 </style>
 </head>
-<div id="toast" style="
+<body>
+    
+    <div id="toast" style="
 position:fixed;
 bottom:20px;
 right:20px;
@@ -76,7 +78,6 @@ border-radius:8px;
 display:none;
 color:white;
 "></div>
-<body>
     
     <div id="adminLoader" style="
   position:fixed;
@@ -130,6 +131,9 @@ color:white;
 <!-- LESSONS -->
 <div id="lessons" class="card" style="display:none;">
 <h3>Add Lesson</h3>
+<button onclick="fixLessonOrder()" style="background:#f59e0b;">
+  🔧 Fix Lesson Order
+</button>
 
 <select id="courseSelect"></select>
 
@@ -201,10 +205,11 @@ color:white;
 </select>
 
 <select id="bizType">
-    <input id="bizPrice" type="number" placeholder="Price (Only for Premium)">
   <option value="free">Free</option>
   <option value="premium">Premium</option>
 </select>
+
+<input id="bizPrice" type="number" placeholder="Price (Only for Premium)">
 
 <button onclick="addBusiness(this)">Upload Business Idea</button>
 <button onclick="updateBusiness()">Update Business Idea</button>
@@ -308,8 +313,7 @@ async function createCourse(btn){
 
   showAdminLoader();
   setLoader("Preparing upload...");
-  btn.disabled = false;
-btn.innerText = "Create Course";
+
   let img="";
   const file = courseCover.files[0];
 
@@ -326,20 +330,23 @@ btn.innerText = "Create Course";
       createdAt:Date.now()
     });
 
-   document.getElementById("adminText").innerHTML = "✅ Completed Successfully";
+    document.getElementById("adminText").innerHTML = "✅ Completed Successfully";
 
     setTimeout(()=>{
       hideAdminLoader();
+      btn.disabled = false;
+      btn.innerText = "Create Course";
       alert("Course created!");
       loadCourses();
     },500);
 
   }catch(e){
     hideAdminLoader();
+    btn.disabled = false;
+    btn.innerText = "Create Course";
     alert("Upload failed");
   }
 }
-
 async function loadCourses(){
   const snap = await db.collection("courses").get();
 
@@ -358,13 +365,19 @@ async function loadCourses(){
         ${d.coverUrl ? `<img src="${d.coverUrl}">` : ""}
         <h4>${d.title}</h4>
         <p>${d.description}</p>
-       <b>${d.price > 0 ? "K" + Number(d.price).toLocaleString() : "FREE"}</b>
+        <b>${d.price > 0 ? "K" + Number(d.price).toLocaleString() : "FREE"}</b>
 
         <button onclick="deleteCourse('${doc.id}')">Delete</button>
-       <button onclick="openCourseEdit('${doc.id}')">Edit</button>
+        <button onclick="openCourseEdit('${doc.id}')">Edit</button>
       </div>
     `;
   });
+
+  // ✅ FIX: run AFTER courses are loaded
+  if (courseSelect.options.length > 0) {
+    courseSelect.selectedIndex = 0;
+    loadLessons();
+  }
 
   loadStats();
 }
@@ -397,15 +410,13 @@ async function addLesson(btn){
 
   btn.disabled = true;
   btn.innerText = "Uploading...";
-  
-  btn.disabled = false;
-btn.innerText = "Add Lesson";
+
+  showAdminLoader();
 
   let url="";
   const file = lessonFile.files[0];
 
   try{
-
     if(file){
       url = await upload(file);
     } else {
@@ -414,6 +425,8 @@ btn.innerText = "Add Lesson";
 
     if(!url){
       hideAdminLoader();
+      btn.disabled = false;
+      btn.innerText = "Add Lesson";
       return alert("Add file or URL");
     }
 
@@ -421,62 +434,103 @@ btn.innerText = "Add Lesson";
 
     setLoader("Saving lesson...");
 
-    await db.collection("courses")
-      .doc(courseId)
-      .collection("lessons")
-      .add({
-        title:lessonTitle.value,
-        description:lessonDesc.value,
-        type:type,
-        url:url,
-        createdAt:Date.now()
-      });
+   // get current lessons count
+const snap = await db.collection("courses")
+  .doc(courseId)
+  .collection("lessons")
+  .get();
 
-   document.getElementById("adminText").innerHTML = "✅ Lesson Uploaded";
+const order = snap.size; // works even if 0
+
+await db.collection("courses")
+  .doc(courseId)
+  .collection("lessons")
+  .add({
+    title:lessonTitle.value,
+    description:lessonDesc.value,
+    type:type,
+    url:url,
+    order: order,
+    createdAt:Date.now()
+  });
+
+    document.getElementById("adminText").innerHTML = "✅ Lesson Uploaded";
 
     setTimeout(()=>{
       hideAdminLoader();
+      btn.disabled = false;
+      btn.innerText = "Add Lesson";
       alert("Lesson added!");
       loadLessons();
     },500);
 
   }catch(e){
     hideAdminLoader();
+    btn.disabled = false;
+    btn.innerText = "Add Lesson";
     alert("Upload failed");
   }
 }
 /* LOAD LESSONS */
 async function loadLessons(){
   const courseId = courseSelect.value;
-  if(!courseId) return;
 
-  const snap = await db.collection("courses").doc(courseId).collection("lessons").get();
+  console.log("Selected Course:", courseId); // 👈 ADD
 
-  let html="";
+  if(!courseId){
+    lessonList.innerHTML = "❌ No course selected";
+    return;
+  }
 
-  snap.forEach(doc=>{
-    const d=doc.data();
+  lessonList.innerHTML = "Loading lessons...";
 
-    html+=`
-  <div class="card">
-    <b>${d.title}</b>
-    <p>${d.description||""}</p>
+  try{
+    const snap = await db.collection("courses")
+      .doc(courseId)
+      .collection("lessons")
+      .orderBy("order","asc")
+      .get();
 
-    ${
-      d.type === "video"
-      ? `<video controls src="${d.url}"></video>`
-      : d.type === "image"
-      ? `<img src="${d.url}">`
-      : `<a href="${d.url}" target="_blank">Open Link</a>`
+    if(snap.empty){
+      lessonList.innerHTML = "⚠️ No lessons yet";
+      return;
     }
 
-  </div>
+    let html = `<div id="sortableLessons">`;
+
+    snap.forEach(doc=>{
+      const d = doc.data();
+
+     html += `
+<div class="card lesson-item" draggable="true" data-id="${doc.id}">
+  <div style="cursor:grab;font-weight:bold;">☰ ${d.title}</div>
+  
+  <p>${d.description || ""}</p>
+
+  ${
+    d.type === "video"
+    ? `<video controls src="${d.url}"></video>`
+    : d.type === "image"
+    ? `<img src="${d.url}">`
+    : `<a href="${d.url}" target="_blank">Open Link</a>`
+  }
+
+  <button onclick="editLesson('${doc.id}')" style="background:#f59e0b;">✏️ Edit</button>
+  <button onclick="deleteLesson('${doc.id}')" style="background:#ef4444;">🗑 Delete</button>
+</div>
 `;
-  });
+    });
 
-  document.getElementById("lessonList").innerHTML=html;
+    html += `</div>`;
+    lessonList.innerHTML = html;
+
+    enableDrag();
+
+  }catch(e){
+    console.error(e);
+    lessonList.innerHTML = "❌ Error loading lessons";
+  }
 }
-
 /* QUIZ */
 async function addQuiz(){
   await db.collection("courses")
@@ -557,7 +611,7 @@ async function loadUsers(){
 
 /* LOAD ALL */
 async function loadAll(){
-  loadCourses();
+  await loadCourses(); // ✅ WAIT for courses first
   loadPayments();
   loadUsers();
   loadStats();
@@ -939,6 +993,176 @@ async function checkAccess(){
 
   return !snap.empty; // true = has access
 }
+
+function enableDrag(){
+  const container = document.getElementById("sortableLessons");
+  let dragged = null;
+
+  container.querySelectorAll(".lesson-item").forEach(item => {
+
+    item.addEventListener("dragstart", () => {
+      dragged = item;
+      item.style.opacity = "0.4";
+    });
+
+    item.addEventListener("dragend", () => {
+      item.style.opacity = "1";
+      saveNewOrder();
+    });
+
+    item.addEventListener("dragover", (e) => {
+      e.preventDefault();
+
+      const afterElement = getDragAfterElement(container, e.clientY);
+      if(afterElement == null){
+        container.appendChild(dragged);
+      } else {
+        container.insertBefore(dragged, afterElement);
+      }
+    });
+
+  });
+}
+
+/* SMART POSITION DETECTION */
+function getDragAfterElement(container, y){
+  const draggableElements = [...container.querySelectorAll(".lesson-item:not(.dragging)")];
+
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+
+    if(offset < 0 && offset > closest.offset){
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+/* SAVE ORDER (OPTIMIZED) */
+async function saveNewOrder(){
+  const courseId = courseSelect.value;
+  const items = document.querySelectorAll(".lesson-item");
+
+  let batch = db.batch();
+
+  items.forEach((item, index)=>{
+    const id = item.getAttribute("data-id");
+
+    const ref = db.collection("courses")
+      .doc(courseId)
+      .collection("lessons")
+      .doc(id);
+
+    batch.update(ref, { order: index });
+  });
+
+  await batch.commit();
+
+  toast("✅ Order saved!");
+}
+
+async function fixLessonOrder() {
+  const courseId = courseSelect.value;
+  if (!courseId) return alert("Select a course first");
+
+  const snap = await db.collection("courses")
+    .doc(courseId)
+    .collection("lessons")
+    .get();
+
+  let i = 0;
+
+  snap.forEach(doc => {
+    db.collection("courses")
+      .doc(courseId)
+      .collection("lessons")
+      .doc(doc.id)
+      .update({ order: i++ });
+  });
+
+  alert("Lesson order fixed!");
+}
+
+async function editLesson(id){
+  const courseId = courseSelect.value;
+
+  const docRef = await db.collection("courses")
+    .doc(courseId)
+    .collection("lessons")
+    .doc(id)
+    .get();
+
+  const d = docRef.data();
+
+  const newTitle = prompt("Edit Title", d.title);
+  const newDesc = prompt("Edit Description", d.description);
+
+  let newUrl = d.url;
+
+  const changeFile = confirm("Do you want to change image/video/file?");
+
+  if(changeFile){
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+
+    fileInput.onchange = async (e)=>{
+      const file = e.target.files[0];
+      if(file){
+        showAdminLoader();
+        setLoader("Uploading new file...");
+
+        newUrl = await upload(file);
+
+        await db.collection("courses")
+          .doc(courseId)
+          .collection("lessons")
+          .doc(id)
+          .update({
+            title: newTitle,
+            description: newDesc,
+            url: newUrl,
+            type: detectType(newUrl)
+          });
+
+        hideAdminLoader();
+        loadLessons();
+        toast("Lesson updated ✅");
+      }
+    };
+
+    fileInput.click();
+    return;
+  }
+
+  await db.collection("courses")
+    .doc(courseId)
+    .collection("lessons")
+    .doc(id)
+    .update({
+      title: newTitle,
+      description: newDesc
+    });
+
+  loadLessons();
+  toast("Lesson updated ✅");
+}
+
+async function deleteLesson(id){
+  const courseId = courseSelect.value;
+
+  if(!confirm("Delete this lesson?")) return;
+
+  await db.collection("courses")
+    .doc(courseId)
+    .collection("lessons")
+    .doc(id)
+    .delete();
+
+  loadLessons();
+  toast("Lesson deleted 🗑");
+}
 </script>
 <div id="editModal" style="
 position:fixed;
@@ -1006,20 +1230,6 @@ backdrop-filter: blur(5px);
 
   </div>
 </div>
-    <select id="editCategory">
-      <option value="online">Online</option>
-      <option value="physical">Physical</option>
-      <option value="service">Service</option>
-      <option value="student">Student</option>
-    </select>
-
-    <select id="editType">
-      <option value="free">Free</option>
-      <option value="premium">Premium</option>
-    </select>
-
-    <button onclick="saveEdit()">💾 Save Changes</button>
-    <button onclick="closeModal()" style="background:#ef4444;">Cancel</button>
 
   </div>
 </div>
